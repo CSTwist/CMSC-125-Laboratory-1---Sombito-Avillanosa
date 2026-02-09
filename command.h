@@ -1,3 +1,8 @@
+#ifndef COMMAND_H
+#define COMMAND_H
+
+#include <stdbool.h>
+
 typedef struct {
     char *command;        // Command name
     char *args[256];      // Arguments (NULL-terminated)
@@ -6,3 +11,5 @@ typedef struct {
     bool append;          // true for >>, false for >
     bool background;      // true if & present
 } Command;
+
+#endif // COMMAND_H
