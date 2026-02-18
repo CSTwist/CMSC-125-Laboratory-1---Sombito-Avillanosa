@@ -5,12 +5,47 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "parser.h"
 #include "command.h"
 
+#define MAX_JOBS 100
+
+int next_job_id = 1;
+pid_t bg_pids[MAX_JOBS];
+int bg_job_ids[MAX_JOBS];
+int bg_count = 0;
+
 int main() {
     while (1) {
+
+        //Check for completed background jobs
+        while (1) {
+            int status;
+            pid_t pid = waitpid(-1, &status, WNOHANG);
+            if (pid > 0) {
+                for (int i = 0; i < bg_count; i++) {
+                    if (bg_pids[i] == pid) {
+                        printf("\n[Job %d] %d completed\n", bg_job_ids[i], (int)bg_pids[i]);
+                        //Shift remaining jobs down
+                        for (int j = i; j < bg_count - 1; j++) {
+                            bg_pids[j] = bg_pids[j + 1];
+                            bg_job_ids[j] = bg_job_ids[j + 1];
+                        }
+                        bg_count--;
+                        break;
+                    }
+                }
+            } else if (pid == 0) {
+                break; //No more finished background jobs
+            } else {
+                if (errno == ECHILD) break;
+                perror("waitpid");
+                break;
+            }
+        }
+
         char line[256];
 
         printf("mysh> ");
@@ -84,6 +119,38 @@ int main() {
         }
 
         if (pid == 0) {
+
+            if (cmd.input_file != NULL) {
+                int fd = open(cmd.input_file, O_RDONLY);
+                if (fd < 0) {
+                    perror("open input file");
+                    exit(1);
+                }
+                if (dup2(fd, STDIN_FILENO) < 0) {
+                    perror("dup2 stdin");
+                    close(fd);
+                    exit(1);
+                }
+                close(fd);
+            }
+
+            if (cmd.output_file != NULL) {
+                //Set flags for open() based on whether we're appending or truncating
+                int flags = O_WRONLY | O_CREAT | (cmd.append ? O_APPEND : O_TRUNC);
+                int fd = open(cmd.output_file, flags, 0644);
+
+                if (fd < 0) {
+                    perror("open output file");
+                    exit(1);
+                }
+                if (dup2(fd, STDOUT_FILENO) < 0) {
+                    perror("dup2 stdout");
+                    close(fd);
+                    exit(1);
+                }
+                close(fd);
+            }
+
             //Child process: run the command
             execvp(cmd.command, cmd.args);
 
@@ -98,12 +165,27 @@ int main() {
         } else {
             //Parent process: wait for child
             int status;
-            if (waitpid(pid, &status, 0) < 0) {
-                perror("waitpid");
+
+            //If background job, add to list instead of waiting
+            if (cmd.background) {
+                if (bg_count < MAX_JOBS) {
+                    bg_pids[bg_count] = pid;
+                    bg_job_ids[bg_count] = next_job_id++;
+                    printf("[Job %d] %d started in background\n", bg_job_ids[bg_count], (int)pid);
+                    bg_count++;
+                } else {
+                    fprintf(stderr, "mysh: maximum background jobs reached\n");
+                }
             } else {
-                if (WIFEXITED(status)) {
-                    int code = WEXITSTATUS(status);
-                    if (code != 0) {
+                //Wait for foreground job to finish
+                if (waitpid(pid, &status, 0) < 0) {
+                    perror("waitpid");
+                } else {
+                    if (WIFEXITED(status)) {
+                        int code = WEXITSTATUS(status);
+                        if (code != 0) {
+                            printf ("Command exited with code %d\n", code);
+                        }
                     }
                 }
             }
