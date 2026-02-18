@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "parser.h"
 #include "command.h"
@@ -84,6 +85,39 @@ int main() {
         }
 
         if (pid == 0) {
+
+            if (cmd.input_file != NULL) {
+                int fd = open(cmd.input_file, O_RDONLY);
+                if (fd < 0) {
+                    perror("open input file");
+                    exit(1);
+                }
+                if (dup2(fd, STDIN_FILENO) < 0) {
+                    perror("dup2 stdin");
+                    close(fd);
+                    exit(1);
+                }
+                close(fd);
+            }
+
+            if (cmd.output_file != NULL) {
+
+                //Set flags for open() based on whether we're appending or truncating
+                int flags = O_WRONLY | O_CREAT | (cmd.append ? O_APPEND : O_TRUNC);
+                int fd = open(cmd.output_file, flags, 0644);
+
+                if (fd < 0) {
+                    perror("open output file");
+                    exit(1);
+                }
+                if (dup2(fd, STDOUT_FILENO) < 0) {
+                    perror("dup2 stdout");
+                    close(fd);
+                    exit(1);
+                }
+                close(fd);
+            }
+
             //Child process: run the command
             execvp(cmd.command, cmd.args);
 
