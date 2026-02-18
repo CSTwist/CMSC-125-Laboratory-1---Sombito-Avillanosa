@@ -17,28 +17,36 @@ int main() {
         fflush(stdout);
 
         if (fgets(line, sizeof(line), stdin) == NULL) {
-            // EOF
+            //EOF
             printf("\n");
             break;
         }
 
-        // Remove trailing newline
+        //Remove trailing newline
         line[strcspn(line, "\n")] = 0;
 
-        // Ignore empty input
+        //Ignore empty input
         if (line[0] == '\0') {
             continue;
         }
 
-        Command cmd = parse_command(line);
+        char *cmd_input = strdup(line); //Pass copy
+        if (cmd_input == NULL) {
+            perror("strdup");
+            continue;
+        }
+        Command cmd = parse_command(cmd_input); //Parser
+                                            //Interpreter
 
-        // If typed only spaces or special tokens, cmd.command may be NULL
+        //If typed only spaces or special tokens, cmd.command may be NULL
         if (cmd.command == NULL) {
+            free(cmd_input); //Free memory if command is invalid
             continue;
         }
 
-        // Built-in commands
+        //Built-in commands
         if (strcmp(cmd.command, "exit") == 0) {
+            free(cmd_input); //Cleanup 
             break;
         }
 
@@ -50,6 +58,7 @@ int main() {
             } else {
                 fprintf(stderr, "cd: missing argument\n");
             }
+            free(cmd_input); //Cleanup
             continue;
         }
 
@@ -60,23 +69,25 @@ int main() {
             } else {
                 perror("pwd");
             }
+            free(cmd_input); //Cleanup
             continue;
         }
 
-        // External commands
-        // fork + execvp + waitpid
+        //External commands
+        //fork + execvp + waitpid
         pid_t pid = fork();
 
         if (pid < 0) {
             perror("fork");
+            free(cmd_input); //Cleanup
             continue;
         }
 
         if (pid == 0) {
-            // Child process: run the command
+            //Child process: run the command
             execvp(cmd.command, cmd.args);
 
-            // If execvp returns, it failed
+            //If execvp returns, it failed
             if (errno == ENOENT) {
                 fprintf(stderr, "mysh: command not found: %s\n", cmd.command);
                 exit(127);
@@ -85,7 +96,7 @@ int main() {
                 exit(1);
             }
         } else {
-            // Parent process: wait for child
+            //Parent process: wait for child
             int status;
             if (waitpid(pid, &status, 0) < 0) {
                 perror("waitpid");
@@ -97,6 +108,8 @@ int main() {
                 }
             }
         }
+
+        free(cmd_input); //Note: Remove this line at the implementation of background jobs.
     }
 
     return 0;
