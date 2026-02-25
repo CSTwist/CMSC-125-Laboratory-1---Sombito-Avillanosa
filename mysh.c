@@ -161,13 +161,11 @@ int main() {
                     perror("open output file");
                     exit(1);
                 }
-
                 if (dup2(fd, STDOUT_FILENO) < 0) {
                     perror("dup2 stdout");
                     close(fd);
                     exit(1);
                 }
-
                 close(fd);
             }
 
