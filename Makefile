@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -std=gnu11
 
 TARGET = mysh
-OBJS = mysh.o parser.o
+OBJS = mysh.o parser.o interpreter.o
 
 all: $(TARGET)
 

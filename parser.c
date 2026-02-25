@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 Command parse_command(char *input) {
-    char *command = strtok(input, " ");
+    char *command = strtok(input, " \t\n");
     Command cmd = {0};
     cmd.command = command;
     int i = 0;
