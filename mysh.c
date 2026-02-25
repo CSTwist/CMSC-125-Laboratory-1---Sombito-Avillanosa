@@ -17,33 +17,44 @@ pid_t bg_pids[MAX_JOBS];
 int bg_job_ids[MAX_JOBS];
 int bg_count = 0;
 
+static void remove_bg_job(int index) {
+    //swap with last to remove (replaced shifting down loop)
+    bg_pids[index] = bg_pids[bg_count - 1];
+    bg_job_ids[index] = bg_job_ids[bg_count - 1];
+    bg_count--;
+}
+
 int main() {
     while (1) {
 
         //Check for completed background jobs
         while (1) {
             int status;
-            pid_t pid = waitpid(-1, &status, WNOHANG);
-            if (pid > 0) {
+            pid_t done = waitpid(-1, &status, WNOHANG);
+
+            if (done > 0) {
+                //find job in list (one loop)
                 for (int i = 0; i < bg_count; i++) {
-                    if (bg_pids[i] == pid) {
-                        printf("\n[Job %d] %d completed\n", bg_job_ids[i], (int)bg_pids[i]);
-                        //Shift remaining jobs down
-                        for (int j = i; j < bg_count - 1; j++) {
-                            bg_pids[j] = bg_pids[j + 1];
-                            bg_job_ids[j] = bg_job_ids[j + 1];
-                        }
-                        bg_count--;
+                    if (bg_pids[i] == done) {
+                        printf("\n[Job %d] %d completed\n", bg_job_ids[i], (int)done);
+                        remove_bg_job(i);
                         break;
                     }
                 }
-            } else if (pid == 0) {
-                break; //No more finished background jobs
-            } else {
-                if (errno == ECHILD) break;
-                perror("waitpid");
-                break;
+                //keep looping to reap more finished children
+                continue;
             }
+
+            if (done == 0) {
+                break; //none finished
+            }
+
+            //done == -1
+            if (errno == ECHILD) {
+                break; //no child processes
+            }
+            perror("waitpid");
+            break;
         }
 
         char line[256];
@@ -135,19 +146,28 @@ int main() {
             }
 
             if (cmd.output_file != NULL) {
-                //Set flags for open() based on whether we're appending or truncating
-                int flags = O_WRONLY | O_CREAT | (cmd.append ? O_APPEND : O_TRUNC);
+
+                int flags = O_WRONLY | O_CREAT;
+
+                if (cmd.append) {
+                    flags |= O_APPEND;   // Append mode (>>)
+                } else {
+                    flags |= O_TRUNC;    // Truncate mode (>)
+                }
+
                 int fd = open(cmd.output_file, flags, 0644);
 
                 if (fd < 0) {
                     perror("open output file");
                     exit(1);
                 }
+
                 if (dup2(fd, STDOUT_FILENO) < 0) {
                     perror("dup2 stdout");
                     close(fd);
                     exit(1);
                 }
+
                 close(fd);
             }
 
