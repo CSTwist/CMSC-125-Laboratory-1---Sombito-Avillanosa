@@ -1,6 +1,10 @@
-# -CMSC-125-Laboratory-1---Sombito-Avillanosa
+# CMSC-125-Laboratory-1---Sombito-Avillanosa
 
-This repo contains implementation of Lab 1 for CMSC 125 Operating Systems, where we focus on process management and I/O redirection using the POSIX API in C.
+**Created by:**
+<br>Chakinzo N. Sombito & Walton Karl L. Avillanosa
+
+**INTRODUCTION**
+<br>This repo contains implementation of Lab 1 for CMSC 125 Operating Systems, where we focus on process management and I/O redirection using the POSIX API in C.
 
 The goal of this lab activity is to build a simplified Unix shell, called "mysh" to demonstrate how OS create and manage process, execute programs, handle input/output redirection, background execution.
 
@@ -12,7 +16,7 @@ The shell aims to demonstrate:
 - Background job execution
 - Cleanup of zombie processes
 
-Features(Planned/In progress)
+**FEATURES**
 1. Interactive Shell
 - Displaying a prompt (mysh >)
 - Keep accepting and executing user commands
@@ -30,31 +34,43 @@ Features(Planned/In progress)
 - Shell remains responsive
 - Background jobs tracked to prevent zombie processes
 
-Project Structure (In-progress)
+**PROJECT STRUCTURE**
+- assets/screenshots
+- interpreter.c
+- interpreter.h
+- interpreter.o
 - mysh.c
-- mysh.h
+- mysh
 - mysh.o
+- parser.c
+- parser.h
+- parser.o
+- test_mysh.sh
 - README.md
 - Makefile
 
-This repo structure may evolve as implementation progress.
+**TESTING**
+- Use test_mysh.sh for testing the UNIX Shell functionality
 
-Command Representation (suggested template)
-1 typedef struct {
-2   char * command ; // Command name
-3   char * args [256]; // Arguments (NULL - terminated )
-4   char * input_file ; // For < redirection ( NULL if none )
-5   char * output_file ; // For > or >> redirection ( NULL if none )
-6   bool append ; // true for >>, false for >
-7   bool background ; // true if & present
-8 } Command ;
+**COMPILATION AND USAGE INSTRUCTIONS**
 
-Testing:
-- Built-in commands
-- External commands
-- Invalid commands
-- I/O redirection edge cases
-- Background job execution
-- Zombie process cleanup
-- Behavior comparison with bash
+How to use mysh.c File
 
+1. Compile in terminal with command: "make all"
+2. Run in terminal with command: "./mysh"
+
+How to use test_mysh.sh
+- test_mysh.sh is the test script to test the required functionality of this UNIX Shell
+
+**DESIGN DECISIONS AND ARCHITECTURE OVERVIEW**
+
+**Decisions:** 
+
+1. We separated the parsing logic into parser.c to keep the main shell loop clean, and implemented a non-blocking waitpid loop at the start of each REPL iteration to reap zombies.
+
+2. We also separated the logic in the mysh file to the interpreter c file. This ensures modularity and also ensures that mysh only handles input.
+
+**SCREENSHOTS**
+
+![alt text](assets/screenshot1.png)
+![alt text](assets/screenshot2.png)
